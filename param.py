@@ -1,10 +1,10 @@
 from typing import Optional, List
-from capability import ClientCapabilities
-from constant import DocumentUri
-from dpylsp import LspItem
-from text import (TextDocumentItem, VersionedTextDocumentIdentifier,
-                  TextDocumentContentChangeEvent, TextDocumentIdentifier)
-from diagnostic import Diagnostic
+from .capability import ClientCapabilities
+from .constant import DocumentUri
+from .dpylsp import LspItem
+from .text import (TextDocumentItem, VersionedTextDocumentIdentifier,
+                   TextDocumentContentChangeEvent, TextDocumentIdentifier)
+from .diagnostic import Diagnostic
 
 import logging
 

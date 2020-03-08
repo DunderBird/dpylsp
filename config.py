@@ -1,6 +1,7 @@
 '''
     This file should not be exposed to the user
 '''
+from typing import Final
 import param as p
 
 
@@ -36,7 +37,7 @@ class Rp_Map(MessageMap):
         super().__init__('Response', resultType=resultType)
 
 
-event_map = {
+event_map: Final = {
     'initialize':
     Rq_Map('onInitialize', p.InitializeParams),
     'initialized':

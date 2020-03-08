@@ -48,7 +48,7 @@ class TextDocumentEdit:
         on a version Si and after they are applied move the
         document to version Si+1.
     '''
-    def __init__(self, textDocument: dict, edits: List[dict]):
+    def __init__(self, textDocument: dict, edits: List[dict], **kwargs):
         self.textDocument = VersionedTextDocumentIdentifier(**textDocument)
         self.edits = []
         for edit in edits:
@@ -61,7 +61,7 @@ class TextDocumentItem:
         the server.
     '''
     def __init__(self, uri: DocumentUri, languageId: str, version: int,
-                 text: str):
+                 text: str, **kwargs):
         self.uri = uri
         self.languageId = languageId
         self.version = version
