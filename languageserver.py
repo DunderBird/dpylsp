@@ -1,9 +1,10 @@
 from enum import Enum
 from .manager import ServerManager
 from .response import InitializeResult, SimpleResult
-import param as p
-import constant as ct
+from . import param as p
+from . import constant as ct
 from .workspace import WorkSpace
+from .capability import ServerCapabilities
 
 
 class ServerState(Enum):
@@ -22,10 +23,14 @@ class LanguageServer:
         self.state = ServerState.RUN
         self.manager.start()
 
+    def close(self):
+        self.state = ServerState.HANG
+        self.manager.exit()
+
     def onInitialize(self, param: p.InitializeParams,
                      **kwargs) -> InitializeResult:
         capability = {"textDocumentSync": ct.textSync_Incremental}
-        return InitializeResult(capability)
+        return InitializeResult(capabilities=ServerCapabilities(**capability))
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
         return None
@@ -35,8 +40,7 @@ class LanguageServer:
         return SimpleResult()
 
     def onExit(self, **kwargs) -> None:
-        self.state = ServerState.HANG
-        self.manager.exit()
+        self.close()
 
     def onDidOpenTextDocument(self, param: p.DidOpenTextDocumentParams,
                               **kwargs) -> None:

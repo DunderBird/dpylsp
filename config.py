@@ -2,7 +2,7 @@
     This file should not be exposed to the user
 '''
 from typing import Final
-import param as p
+from . import param as p
 
 
 class MessageMap:

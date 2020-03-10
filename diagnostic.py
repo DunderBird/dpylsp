@@ -1,7 +1,7 @@
 from typing import Optional
-from dpylsp import LspItem
-from text import Range
-import constant as ct
+from .dpylsp import LspItem
+from .text import Range
+from . import constant as ct
 
 
 class Diagnostic(LspItem):

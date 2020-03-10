@@ -1,14 +1,13 @@
 import logging
-from languageserver import LanguageServer
 from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
-from config import event_map
-from dpylsp import LspItem
+from .config import event_map
+from .dpylsp import LspItem
 
 logger = logging.getLogger(__name__)
 
 
 class ServerManager:
-    def __init__(self, masterServer: LanguageServer, reader, writer):
+    def __init__(self, masterServer, reader, writer):
         self.master = masterServer
         self.jsonreader = JsonRpcStreamReader(reader)
         self.jsonwriter = JsonRpcStreamWriter(writer)
@@ -46,7 +45,7 @@ class ServerManager:
     def handle_notification(self, name, param):
         getattr(self.master, name)(param)
 
-    def handle_response():
+    def handle_response(self):
         pass
 
     def send_response(self, id, result: LspItem):

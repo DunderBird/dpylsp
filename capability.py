@@ -1,6 +1,5 @@
 from typing import Optional, Union
 from .dpylsp import LspItem
-from .config import TextDocumentSyncOptions
 
 
 class ClientCapabilities(LspItem):
@@ -11,5 +10,5 @@ class ClientCapabilities(LspItem):
 class ServerCapabilities(LspItem):
     def __init__(self,
                  textDocumentSync: Optional[Union[int,
-                                                  TextDocumentSyncOptions]]):
+                                                  int]], **kwargs):
         self.textDocumentSync = textDocumentSync

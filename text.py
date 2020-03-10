@@ -1,6 +1,6 @@
 from typing import Optional, List
-from dpylsp import LspItem
-from constant import DocumentUri
+from .dpylsp import LspItem
+from .constant import DocumentUri
 
 
 class Position(LspItem):

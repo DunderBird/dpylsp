@@ -1,6 +1,6 @@
 from typing import Optional
-from capability import ServerCapabilities
-from dpylsp import LspItem
+from .capability import ServerCapabilities
+from .dpylsp import LspItem
 
 
 class SimpleResult(LspItem):
