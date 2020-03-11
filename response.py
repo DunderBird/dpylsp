@@ -16,3 +16,9 @@ class InitializeResult(LspItem):
         self.capabilities = capabilities
         self.serverInfo = serverInfo
         self.version = version
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        return cls(ServerCapabilities.fromDict(param['capabilities']),
+                   serverInfo=param['serverInfo'],
+                   version=param['version'])

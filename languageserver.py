@@ -1,3 +1,4 @@
+from typing import Optional
 from enum import Enum
 from .manager import ServerManager
 from .response import InitializeResult, SimpleResult
@@ -14,10 +15,16 @@ class ServerState(Enum):
 
 
 class LanguageServer:
-    def __init__(self, reader, writer):
+    def __init__(self,
+                 reader,
+                 writer,
+                 capability: Optional[ServerCapabilities] = None,
+                 **kwargs):
         self.state: ServerState = ServerState.HANG
         self.manager = ServerManager(self, reader, writer)
         self.workspace = WorkSpace()
+        self.capability = capability if capability else ServerCapabilities(
+            ct.textSync_Incremental)
 
     def start(self):
         self.state = ServerState.RUN
@@ -29,17 +36,16 @@ class LanguageServer:
 
     def onInitialize(self, param: p.InitializeParams,
                      **kwargs) -> InitializeResult:
-        capability = {"textDocumentSync": ct.textSync_Incremental}
-        return InitializeResult(capabilities=ServerCapabilities(**capability))
+        return InitializeResult(self.capability)
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
         return None
 
-    def onShutdown(self, **kwargs) -> SimpleResult:
+    def onShutdown(self, param: p.NullParams, **kwargs) -> SimpleResult:
         self.state = ServerState.SHUTDOWN
         return SimpleResult()
 
-    def onExit(self, **kwargs) -> None:
+    def onExit(self, param: p.NullParams, **kwargs) -> None:
         self.close()
 
     def onDidOpenTextDocument(self, param: p.DidOpenTextDocumentParams,
@@ -50,9 +56,13 @@ class LanguageServer:
     def onDidChangeTextDocument(self, param: p.DidChangeTextDocumentParams,
                                 **kwargs) -> None:
         self.workspace.updateDocument(param.textDocument.uri,
-                                      param.contentChange)
+                                      param.contentChanges)
 
     def onDidCloseTextDocument(self, param: p.DidCloseTextDocumentParams,
                                **kwargs) -> None:
         textDocument = param.textDocument
         self.workspace.removeDocument(textDocument.uri)
+
+    def onDidSaveTextDocument(self, param: p.DidSaveTextDocumentParams,
+                              **kwargs) -> None:
+        return None

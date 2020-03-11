@@ -2,6 +2,7 @@ import logging
 from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .config import event_map
 from .dpylsp import LspItem
+from .param import NullParams, PublishDiagnosticParams
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,15 @@ class ServerManager:
             else:
                 param_dict = message.get('params')
                 handler_name = handle_map.method
-                handler_param = handle_map.paramType(
-                    param_dict) if param_dict and handle_map.paramType else {}
+
+                try:
+                    handler_param = handle_map.paramType.fromDict(
+                        param_dict
+                    ) if param_dict and handle_map.paramType else NullParams
+                except KeyError:
+                    logger.error('Parameter parse error: %s %s',
+                                 message['method'], str(param_dict))
+                    return
 
                 if hasattr(self.master, handler_name):
                     if handle_map.rpctype == 'Notification':
@@ -49,15 +57,18 @@ class ServerManager:
         pass
 
     def send_response(self, id, result: LspItem):
-        result_item = result.serialize()
+        result_item = result.getDict()
         response = {'jsonrpc': '2.0', 'id': id, 'result': result_item}
         self.jsonwriter.write(response)
 
     def send_notification(self, method: str, param: LspItem):
-        param_item = param.serialize()
+        param_item = param.getDict()
         notification = {
             'jsonrpc': '2.0',
             'method': method,
             'params': param_item
         }
         self.jsonwriter.write(notification)
+
+    def send_diagnostics(self, diagnostics: PublishDiagnosticParams):
+        self.send_notification('textDocument/publishDiagnostics', diagnostics)

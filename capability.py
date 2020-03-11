@@ -1,14 +1,13 @@
-from typing import Optional, Union
+from typing import Optional
 from .dpylsp import LspItem
 
 
 class ClientCapabilities(LspItem):
-    def __init__(self, params):
+    def __init__(self, **kwargs):
         pass
 
 
 class ServerCapabilities(LspItem):
     def __init__(self,
-                 textDocumentSync: Optional[Union[int,
-                                                  int]], **kwargs):
+                 textDocumentSync: Optional[int], **kwargs):
         self.textDocumentSync = textDocumentSync

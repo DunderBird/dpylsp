@@ -1,7 +1,7 @@
 '''
     This file should not be exposed to the user
 '''
-from typing import Final
+from typing_extensions import Final
 from . import param as p
 
 
@@ -43,13 +43,15 @@ event_map: Final = {
     'initialized':
     N_Map('onInitialized', p.InitializedParams),
     'shutdown':
-    Rq_Map('onShutdown', None),
+    Rq_Map('onShutdown', p.NullParams),
     'exit':
-    N_Map('onExit', None),
+    N_Map('onExit', p.NullParams),
     'textDocument/didOpen':
     N_Map('onDidOpenTextDocument', p.DidOpenTextDocumentParams),
     'textDocument/didChange':
     N_Map('onDidChangeTextDocument', p.DidChangeTextDocumentParams),
     'textDocument/didClose':
-    N_Map('onDidCloseTextDocument', p.DidCloseTextDocumentParams)
+    N_Map('onDidCloseTextDocument', p.DidCloseTextDocumentParams),
+    'textDocument/didSave':
+    N_Map('onDidSaveTextDocument', p.DidSaveTextDocumentParams)
 }

@@ -13,3 +13,8 @@ class Diagnostic(LspItem):
         self.range = range
         self.message = message
         self.severity = severity
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        return Diagnostic(Range.fromDict(param['range']), param['message'],
+                          param['severity'])

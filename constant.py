@@ -1,4 +1,5 @@
-from typing import Final, List
+from typing import List
+from typing_extensions import Final
 
 textSync_None: Final[int] = 0
 textSync_Full: Final[int] = 1
@@ -18,4 +19,3 @@ diagTag_Deprecated: Final[int] = 2
 
 EOL: List[str] = ['\n', '\r\n', '\r']
 DocumentUri = str
-

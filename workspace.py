@@ -67,3 +67,6 @@ class WorkSpace:
                          uri)
         else:
             self.documents[uri].update(changes)
+
+    def getDocumentText(self, uri: str) -> str:
+        return self.documents[uri].text
