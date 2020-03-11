@@ -33,10 +33,11 @@ class LspItem(object):
 
     def getDict(self):
         dump_dict = {}
+        # logger.info(f'attribute: {str(vars(self))}')
         for key, value in vars(self).items():
             if value is not None:
                 converted = _convert_val(value)
-                if converted:
+                if converted is not None:
                     dump_dict[key] = converted
-        logger.info(f'dict: {str(dump_dict)}')
+        # logger.info(f'dict: {str(dump_dict)}')
         return dump_dict
