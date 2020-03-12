@@ -36,6 +36,6 @@ class LspItem(object):
         for key, value in vars(self).items():
             if value is not None:
                 converted = _convert_val(value)
-                if converted:
+                if converted is not None:
                     dump_dict[key] = converted
         return dump_dict
