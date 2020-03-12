@@ -38,5 +38,4 @@ class LspItem(object):
                 converted = _convert_val(value)
                 if converted:
                     dump_dict[key] = converted
-        logger.info(f'dict: {str(dump_dict)}')
         return dump_dict
