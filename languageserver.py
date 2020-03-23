@@ -1,11 +1,16 @@
 from typing import Optional
 from enum import Enum
+import logging
 from .manager import ServerManager
 from .response import InitializeResult, SimpleResult
 from . import param as p
 from . import constant as ct
 from .workspace import WorkSpace
 from .capability import ServerCapabilities
+from .param import ConfigurationParams
+from .config import ConfigurationItem
+
+logger = logging.getLogger(__name__)
 
 
 class ServerState(Enum):
@@ -39,6 +44,10 @@ class LanguageServer:
         return InitializeResult(self.capability)
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
+        # self.manager.ask_workspaceConfiguration(ConfigurationParams(
+        #     [ConfigurationItem(section='python')]),
+        #                                         block=True)
+        # logger.info('initialized')
         return None
 
     def onShutdown(self, param: p.NullParams, **kwargs) -> SimpleResult:
@@ -65,4 +74,8 @@ class LanguageServer:
 
     def onDidSaveTextDocument(self, param: p.DidSaveTextDocumentParams,
                               **kwargs) -> None:
+        return None
+
+    def onReceiveWorkspaceConfiguration(self, result, **kwargs) -> None:
+        logger.info(result)
         return None

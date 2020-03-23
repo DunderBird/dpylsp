@@ -1,10 +1,11 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from .capability import ClientCapabilities
 from .constant import DocumentUri
 from .dpylsp import LspItem
 from .text import (TextDocumentItem, VersionedTextDocumentIdentifier,
                    TextDocumentContentChangeEvent, TextDocumentIdentifier)
 from .diagnostic import Diagnostic
+from .config import ConfigurationItem
 
 import logging
 
@@ -17,6 +18,11 @@ class NullParams(LspItem):
     '''
     def __init__(self, **kwargs):
         pass
+
+
+class CancelParams(LspItem):
+    def __init__(self, id: Union[int, str], **kwargs):
+        self.id = id
 
 
 class InitializeParams(LspItem):
@@ -38,6 +44,28 @@ class InitializeParams(LspItem):
 class InitializedParams(LspItem):
     def __init__(self, **kwargs):
         pass
+
+
+# workspace
+class DidChangeConfigurationParams(LspItem):
+    def __init__(self, settings, **kwargs):
+        self.settings = settings
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        return cls(param['settings'])
+
+
+class ConfigurationParams(LspItem):
+    def __init__(self, items: List[ConfigurationItem], **kwargs):
+        self.items = items
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        items = []
+        for item in param['items']:
+            items.append(ConfigurationItem.fromDict(item))
+        return cls(items)
 
 
 class DidOpenTextDocumentParams(LspItem):
