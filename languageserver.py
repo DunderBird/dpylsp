@@ -6,9 +6,7 @@ from .response import InitializeResult, SimpleResult
 from . import param as p
 from . import constant as ct
 from .workspace import WorkSpace
-from .capability import ServerCapabilities
-from .param import ConfigurationParams
-from .config import ConfigurationItem
+from .capability import ServerCapabilities, ClientCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,10 @@ class LanguageServer:
         self.state: ServerState = ServerState.HANG
         self.manager = ServerManager(self, reader, writer)
         self.workspace = WorkSpace()
-        self.capability = capability if capability else ServerCapabilities(
+        self.user_settings = {}
+        self.parent_processId = -1
+        self.client_capability: ClientCapabilities
+        self.server_capability = capability if capability else ServerCapabilities(
             ct.textSync_Incremental)
 
     def start(self):
@@ -41,13 +42,12 @@ class LanguageServer:
 
     def onInitialize(self, param: p.InitializeParams,
                      **kwargs) -> InitializeResult:
-        return InitializeResult(self.capability)
+        self.workspace.rootUri = param.rootUri if param.rootUri else ''
+        self.parent_processId = param.processId
+        self.client_capability = param.capabilities
+        return InitializeResult(self.server_capability)
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
-        # self.manager.ask_workspaceConfiguration(ConfigurationParams(
-        #     [ConfigurationItem(section='python')]),
-        #                                         block=True)
-        # logger.info('initialized')
         return None
 
     def onShutdown(self, param: p.NullParams, **kwargs) -> SimpleResult:
@@ -76,6 +76,11 @@ class LanguageServer:
                               **kwargs) -> None:
         return None
 
+    def onDidChangeConfiguration(self, param: p.DidChangeConfigurationParams,
+                                 **kwargs) -> None:
+        for item in param.settings:
+            self.user_settings.update(item)
+
     def onReceiveWorkspaceConfiguration(self, result, **kwargs) -> None:
-        logger.info(result)
-        return None
+        for item in result:
+            self.user_settings.update(item)

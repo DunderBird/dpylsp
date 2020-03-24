@@ -4,8 +4,10 @@ from concurrent import futures
 from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .__methodMap import event_map
 from .dpylsp import LspItem
-from .param import NullParams, PublishDiagnosticParams, ConfigurationParams, CancelParams
+from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
+                    CancelParams, ShowMessageParams)
 from .exception import JsonRpcRequestCancelled, JsonRpcException
+from . import constant as ct
 
 logger = logging.getLogger(__name__)
 
@@ -166,15 +168,22 @@ class ServerManager:
     def send_diagnostics(self, diagnostics: PublishDiagnosticParams):
         self.send_notification('textDocument/publishDiagnostics', diagnostics)
 
-    # def ask_workspaceConfiguration(self,
-    #                                param: ConfigurationParams,
-    #                                block=False):
-        # def tmp_callback(future):
-        #     logging.info(future.result())
+    def ask_workspaceConfiguration(self, param: ConfigurationParams):
+        def callback(future):
+            if future.cancelled():
+                return
+            else:
+                self.master.onReceiveWorkspaceConfiguration(future.result())
 
-        # msg_id = self.getRequestId()
-        # ask_future = self.send_request(msg_id, 'workspace/configuration',
-        #                                param)
-        # ask_future.add_done_callback(tmp_callback)
-        # if block:
-        #     futures.wait([ask_future])
+        msg_id = self.getRequestId()
+        ask_future = self.send_request(msg_id, 'workspace/configuration',
+                                       param)
+        ask_future.add_done_callback(callback)
+
+    def show_message(self, message: str, messageType: int = ct.message_info):
+        '''
+            This function is different from others
+            since we don't require a LspItem for simplicity.
+        '''
+        self.send_notification('window/showMessage',
+                               ShowMessageParams(messageType, message))

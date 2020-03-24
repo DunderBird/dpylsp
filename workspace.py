@@ -45,6 +45,7 @@ class Document:
 
 class WorkSpace:
     def __init__(self):
+        self.rootUri = ''
         self.documents: Dict[Document] = {}
 
     def addDocument(self, uri: str, text: str):

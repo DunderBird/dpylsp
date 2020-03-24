@@ -46,6 +46,13 @@ class InitializedParams(LspItem):
         pass
 
 
+# window
+class ShowMessageParams(LspItem):
+    def __init__(self, messageType: int, message: str, **kwargs):
+        self.type = messageType
+        self.message = message
+
+
 # workspace
 class DidChangeConfigurationParams(LspItem):
     def __init__(self, settings, **kwargs):

@@ -52,5 +52,7 @@ event_map = {
     'textDocument/didClose':
     N_Map('onDidCloseTextDocument', p.DidCloseTextDocumentParams),
     'textDocument/didSave':
-    N_Map('onDidSaveTextDocument', p.DidSaveTextDocumentParams)
+    N_Map('onDidSaveTextDocument', p.DidSaveTextDocumentParams),
+    'workspace/didChangeConfiguration':
+    N_Map('onDidChangeConfiguration', p.DidChangeConfigurationParams)
 }

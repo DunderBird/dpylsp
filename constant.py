@@ -18,3 +18,10 @@ diagTag_Deprecated = 2
 
 EOL: List[str] = ['\n', '\r\n', '\r']
 DocumentUri = str
+
+MessageType = int
+
+message_error = 1
+message_warning = 2
+message_info = 3
+message_log = 4
