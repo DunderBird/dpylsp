@@ -1,7 +1,7 @@
 # https://github.com/palantir/python-language-server
 import logging
 from concurrent import futures
-from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
+from streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .__methodMap import event_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
