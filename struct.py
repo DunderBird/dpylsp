@@ -1,12 +1,16 @@
 from typing import Optional, List
 from .dpylsp import LspItem
-from .constant import DocumentUri
-import constant as ct
+from . import constant as ct
 
 
 '''
     Text Related
 '''
+
+EOL: List[str] = ['\n', '\r\n', '\r']
+DocumentUri = str
+
+
 class Position(LspItem):
     def __init__(self, line: int, character: int, **kwargs):
         self.line: int = line

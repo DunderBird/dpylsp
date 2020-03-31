@@ -6,7 +6,9 @@ logger = logging.getLogger(__name__)
 def _convert_val(target):
     if target is None:
         return None
-    if isinstance(target, (int, float, str)):
+    if isinstance(target, int):
+        return int(target)  # note that we use int() to get value from a IntEnum
+    if isinstance(target, (float, str)):
         return target
     elif isinstance(target, list):
         result = []

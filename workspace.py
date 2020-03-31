@@ -2,7 +2,7 @@
 from typing import List, Dict
 import logging
 import io
-from .text import TextDocumentContentChangeEvent
+from .struct import TextDocumentContentChangeEvent
 
 logger = logging.getLogger(__name__)
 

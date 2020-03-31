@@ -180,7 +180,7 @@ class ServerManager:
                                        param)
         ask_future.add_done_callback(callback)
 
-    def show_message(self, message: str, messageType: int = ct.message_info):
+    def show_message(self, message: str, messageType: int = ct.MessageType):
         '''
             This function is different from others
             since we don't require a LspItem for simplicity.

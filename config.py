@@ -1,6 +1,6 @@
 from typing import Optional
 from .dpylsp import LspItem
-from .constant import DocumentUri
+from .struct import DocumentUri
 
 
 class ConfigurationItem(LspItem):

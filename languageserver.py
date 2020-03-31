@@ -30,7 +30,7 @@ class LanguageServer:
         self.parent_processId = -1
         self.client_capability: ClientCapabilities
         self.server_capability = capability if capability else ServerCapabilities(
-            ct.textSync_Incremental)
+            ct.TextDocumentSyncKind.INCREMENTAL)
 
     def start(self):
         self.state = ServerState.RUN
