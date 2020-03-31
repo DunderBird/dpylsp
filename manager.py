@@ -2,7 +2,7 @@
 import logging
 from concurrent import futures
 from streams import JsonRpcStreamReader, JsonRpcStreamWriter
-from .__methodMap import event_map
+from .methodMap import event_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
                     CancelParams, ShowMessageParams)
