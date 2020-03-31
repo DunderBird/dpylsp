@@ -1,8 +1,12 @@
 from typing import Optional, List
 from .dpylsp import LspItem
 from .constant import DocumentUri
+import constant as ct
 
 
+'''
+    Text Related
+'''
 class Position(LspItem):
     def __init__(self, line: int, character: int, **kwargs):
         self.line: int = line
@@ -108,3 +112,21 @@ class TextDocumentContentChangeEvent(LspItem):
     @classmethod
     def fromDict(cls, param: dict):
         return cls(param['text'], Range.fromDict(param['range']))
+
+'''
+    Diagnostic Related
+'''
+class Diagnostic(LspItem):
+    def __init__(self,
+                 range: Range,
+                 message: str,
+                 severity: Optional[ct.DiagnosticSeverity] = None,
+                 **kwargs):
+        self.range = range
+        self.message = message
+        self.severity = severity
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        return Diagnostic(Range.fromDict(param['range']), param['message'],
+                          param['severity'])
