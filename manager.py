@@ -18,9 +18,8 @@ cancel_method = '$/cancelRequest'
 class ServerManager:
     def __init__(self, masterServer, reader, writer, max_worker=5):
         self.master = masterServer
-        self.jsonreader = JsonRpcStreamReader(reader)
+        self.jsonreader = JsonRpcStreamReader(reader, max_worker)
         self.jsonwriter = JsonRpcStreamWriter(writer)
-        self.executor = futures.ThreadPoolExecutor(max_workers=max_worker)
         self.server_request_futures = {}
         self.client_request_futures = {}
         self.__id_counter = 1
@@ -123,8 +122,9 @@ class ServerManager:
 
     def send_request(self, msg_id: int, method: str, param: LspItem):
         '''
-            send request to client and save a future in server_request_futures
-            if client responds, then the future's callback will be called
+            Send request to client and save a future in server_request_futures
+            if client responds, then the future's callback will be called.
+            Note that this function won't run the future and add callback.
         '''
         param_item = param.getDict()
         # msg_id = self.getRequestId()
