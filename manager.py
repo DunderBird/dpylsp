@@ -17,22 +17,11 @@ cancel_method = '$/cancelRequest'
 
 
 class ClientRequestRecord:
-    def __init__(self, future):
-        self.future = future
+    def __init__(self):
         self.cancelled = False
     
     def cancel(self):
-        self.future.cancel()
-        self.cancelled = False
-
-    def add_done_callback(self, callback):
-        def wrapper_func(future):
-            nonlocal self, callback
-            if self.cancelled or future.cancelled():
-                return
-            else:
-                callback(future)
-        self.future.add_done_callback(wrapper_func)
+        self.cancelled = True
 
 
 class ServerRequestRecord:
@@ -47,7 +36,6 @@ class ServerManager:
         self.master = masterServer
         self.jsonreader = JsonRpcStreamReader(reader)
         self.jsonwriter = JsonRpcStreamWriter(writer)
-        self.executor = futures.ThreadPoolExecutor(max_workers=max_workers)
         self.server_request = {}
         self.server_request_lock = threading.RLock()
         self.client_request = {}
@@ -65,15 +53,15 @@ class ServerManager:
     def start(self):
         while True:
             new_json = self.jsonreader.read_message()
-            self.executor.submit(self.dispatch, new_json)
+            new_worker = threading.Thread(target=self.dispatch, args=(new_json,))
+            logger.info(f'threading count: {threading.active_count()}')
+            new_worker.start()
 
     def exit(self):
-        self.executor.shutdown()
         self.jsonreader.close()
         self.jsonwriter.close()
 
     def dispatch(self, message):
-        logger.info(f'message: {message}')
         if 'method' in message:
             handle_map = event_map.get(message['method'])
             if handle_map is None:
@@ -114,15 +102,12 @@ class ServerManager:
         except:
             logger.exception(f'No {name} method')
         else:
-            future = self.executor.submit(handler, param)
             with self.client_request_lock:
-                new_item = ClientRequestRecord(future)
-                logger.info(f'new_item created {msg_id} {name}')
-                logger.info(f'thread: {threading.get_ident()}')
-                new_item.add_done_callback(self.__client_request_callback(msg_id))
-                logger.info('added done callback')
+                new_item = ClientRequestRecord()
                 self.client_request[msg_id] = new_item
-                logger.info('added to client_request')
+            result = handler(param)
+            if result and not new_item.cancelled:
+                self.send_response(msg_id, result)
 
     
     def __client_request_callback(self, msg_id: int):
@@ -194,9 +179,7 @@ class ServerManager:
     def send_response(self, id, result: LspItem):
         logger.info(f'send response {id} {result.getDict()}')
         with self.client_request_lock:
-            logger.info(f'in inner of send_response {threading.get_ident()}')
             if id in self.client_request:
-                logger.info(f'id in self.client_request {threading.get_ident()}')
                 result_item = result.getDict()
                 response = {'jsonrpc': '2.0', 'id': id, 'result': result_item}
                 self.jsonwriter.write(response)
@@ -215,15 +198,11 @@ class ServerManager:
         self.send_notification('textDocument/publishDiagnostics', diagnostics)
 
     def ask_workspaceConfiguration(self, param: ConfigurationParams):
-        def callback(future):
-            if future.cancelled():
-                return
-            else:
-                self.master.onReceiveWorkspaceConfiguration(future.result())
+        def callback(result, error, *args, **kwargs):
+            self.master.onReceiveWorkspaceConfiguration(result)
 
-        ask_future = self.send_request('workspace/configuration',
-                                       param)
-        ask_future.add_done_callback(callback)
+        self.send_request('workspace/configuration',
+                                       param, callback)
 
     def show_message(self, message: str, messageType: int = ct.MessageType):
         '''

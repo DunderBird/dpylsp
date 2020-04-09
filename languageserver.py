@@ -48,6 +48,7 @@ class LanguageServer:
         return InitializeResult(self.server_capability)
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
+        self.manager.ask_workspaceConfiguration(p.ConfigurationParams([p.ConfigurationItem(section='workbench')]))
         return None
 
     def onShutdown(self, param: p.NullParams, **kwargs) -> SimpleResult:
@@ -79,8 +80,11 @@ class LanguageServer:
     def onDidChangeConfiguration(self, param: p.DidChangeConfigurationParams,
                                  **kwargs) -> None:
         for item in param.settings:
-            self.user_settings.update(item)
+            if item:
+                self.user_settings.update(item)
 
-    def onReceiveWorkspaceConfiguration(self, result, **kwargs) -> None:
+    def onReceiveWorkspaceConfiguration(self, result: list, **kwargs) -> None:
         for item in result:
-            self.user_settings.update(item)
+            if item:
+                self.user_settings.update(item)
+        logger.info(self.user_settings)
