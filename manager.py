@@ -7,6 +7,7 @@ from .methodMap import event_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
                     CancelParams, ShowMessageParams)
+from .struct import ResponseError
 from .exception import JsonRpcRequestCancelled, JsonRpcException
 from . import constant as ct
 
@@ -62,6 +63,8 @@ class ServerManager:
         if 'method' in message:
             handle_map = event_map.get(message['method'])
             if handle_map is None:
+                if message['method'][:2] == r'$/' and 'id' in message:
+                    self.send_error_response(message['id'], ct.ErrorCodes.METHODNOTFOUND)
                 logging.warning(
                     f"{message['method']} haven't been implemented")
             else:
@@ -103,7 +106,9 @@ class ServerManager:
                 new_item = ClientRequestRecord()
                 self.client_request[msg_id] = new_item
             result = handler(param)
-            if result and not new_item.cancelled:
+            if new_item.cancelled:
+                self.send_error_response(msg_id, ct.ErrorCodes.REQUESTCANCELLED)
+            else:
                 self.send_response(msg_id, result)
 
     def handle_response(self, id, result=None, error=None, **kwargs):
@@ -126,7 +131,7 @@ class ServerManager:
 
     def handle_cancel_notification(self, msg_id):
         with self.client_request_lock:
-            request_item = self.client_request.pop(msg_id, None)
+            request_item = self.client_request.get(msg_id, None)
             if request_item:
                 request_item.cancel()
 
@@ -149,22 +154,26 @@ class ServerManager:
 
         self.jsonwriter.write(request)
 
-    def send_response(self, id, result: LspItem):
-        logger.info(f'send response {id} {result.getDict()}')
+    def send_response(self, id, result=None, error: Optional[ResponseError]=None):
         with self.client_request_lock:
             if id in self.client_request:
-                result_item = result.getDict()
-                response = {'jsonrpc': '2.0', 'id': id, 'result': result_item}
+                result_item = result.getDict() if isinstance(result, LspItem) else result
+                response = {'jsonrpc': '2.0', 'id': id}
+                if result_item:
+                    response['result'] = result_item
+                if error:
+                    response['error'] = error.getDict()
                 self.jsonwriter.write(response)
                 self.client_request.pop(id, None)
 
-    def send_error_response(self, id, error_code: ct.ErrorCodes):
+    def send_error_response(self, id, error_code: ct.ErrorCodes, message=''):
         with self.client_request_lock:
             if id in self.client_request:
+                error_response = ResponseError(error_code, message)
                 response = {
                     'jsonrpc': ct.JSONRPC_VERSION,
                     'id': id,
-                    'error': int(error_code)
+                    'error': error_response.getDict()
                 }
                 self.jsonwriter.write(response)
                 self.client_request.pop(id, None)

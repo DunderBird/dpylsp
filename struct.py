@@ -134,3 +134,11 @@ class Diagnostic(LspItem):
     def fromDict(cls, param: dict):
         return Diagnostic(Range.fromDict(param['range']), param['message'],
                           param['severity'])
+
+'''
+    Response Related
+'''
+class ResponseError(LspItem):
+    def __init__(self, code: ct.ErrorCodes, message=''):
+        self.code = code
+        self.message = message
