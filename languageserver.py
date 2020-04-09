@@ -85,6 +85,9 @@ class BasicLanguageServer:
             if item:
                 self.user_settings.update(item)
         logger.info(self.user_settings)
+    
+    def onDidChangeWorkspaceFolders(self, param: p.DidChangeWorkspaceFoldersParams, **kwargs) -> None:
+        pass
 
 
 class LanguageServer(BasicLanguageServer):

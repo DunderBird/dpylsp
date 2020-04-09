@@ -1,6 +1,7 @@
 from typing import Optional
 from .capability import ServerCapabilities
 from .dpylsp import LspItem
+from .struct import DocumentUri
 
 
 class SimpleResult(LspItem):

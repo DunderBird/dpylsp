@@ -54,5 +54,7 @@ event_map = {
     'textDocument/didSave':
     N_Map('onDidSaveTextDocument', p.DidSaveTextDocumentParams),
     'workspace/didChangeConfiguration':
-    N_Map('onDidChangeConfiguration', p.DidChangeConfigurationParams)
+    N_Map('onDidChangeConfiguration', p.DidChangeConfigurationParams),
+    'workspace/didChangeWorkspaceFolders':
+    N_Map('onDidChangeWorkspaceFolders', p.DidChangeWorkspaceFoldersParams),
 }

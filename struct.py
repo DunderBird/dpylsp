@@ -117,6 +117,9 @@ class TextDocumentContentChangeEvent(LspItem):
     def fromDict(cls, param: dict):
         return cls(param['text'], Range.fromDict(param['range']))
 
+
+
+
 '''
     Diagnostic Related
 '''
@@ -135,6 +138,9 @@ class Diagnostic(LspItem):
         return Diagnostic(Range.fromDict(param['range']), param['message'],
                           param['severity'])
 
+
+
+
 '''
     Response Related
 '''
@@ -142,3 +148,26 @@ class ResponseError(LspItem):
     def __init__(self, code: ct.ErrorCodes, message=''):
         self.code = code
         self.message = message
+
+
+
+
+'''
+    Workspace Related
+'''
+class WorkspaceFolder(LspItem):
+    def __init__(self, uri: DocumentUri, name: str):
+        self.uri = uri
+        self.name = name
+
+
+class WorkspaceFoldersChangeEvent(LspItem):
+    def __init__(self, added: List[WorkspaceFolder], removed: List[WorkspaceFolder]):
+        self.added = added
+        self.removed = removed
+    
+    @classmethod
+    def fromDict(cls, param):
+        added_list = [WorkspaceFolder.fromDict(add) for add in param['added']]
+        removed_list = [WorkspaceFolder.fromDict(remove) for remove in param['removed']]
+        return cls(added_list, removed_list)

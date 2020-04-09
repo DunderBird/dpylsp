@@ -2,7 +2,8 @@ from typing import Optional, List, Union
 from .capability import ClientCapabilities
 from .dpylsp import LspItem
 from .struct import (TextDocumentItem, VersionedTextDocumentIdentifier,
-                   TextDocumentContentChangeEvent, TextDocumentIdentifier, DocumentUri, Diagnostic)
+                   TextDocumentContentChangeEvent, TextDocumentIdentifier, DocumentUri, Diagnostic,
+                   WorkspaceFolder, WorkspaceFoldersChangeEvent)
 from .config import ConfigurationItem
 
 import logging
@@ -57,6 +58,15 @@ class LogMessageParams(LspItem):
 
 
 # workspace
+class DidChangeWorkspaceFoldersParams(LspItem):
+    def __init__(self, event: WorkspaceFoldersChangeEvent, **kwargs):
+        self.event = event
+    
+    @classmethod
+    def fromDict(cls, param):
+        return cls(WorkspaceFoldersChangeEvent.fromDict(param['event']))
+
+
 class DidChangeConfigurationParams(LspItem):
     def __init__(self, settings, **kwargs):
         self.settings = settings
