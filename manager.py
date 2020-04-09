@@ -6,7 +6,7 @@ from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .methodMap import event_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
-                    CancelParams, ShowMessageParams)
+                    CancelParams, ShowMessageParams, LogMessageParams)
 from .struct import ResponseError
 from .exception import JsonRpcRequestCancelled, JsonRpcException
 from . import constant as ct
@@ -197,10 +197,13 @@ class ServerManager:
         self.send_request('workspace/configuration',
                                        param, callback)
 
-    def show_message(self, message: str, messageType: int = ct.MessageType):
+    def show_message(self, message: str, messageType: Union[ct.MessageType, int]):
         '''
             This function is different from others
             because we don't require a LspItem for simplicity.
         '''
         self.send_notification('window/showMessage',
                                ShowMessageParams(messageType, message))
+    
+    def log_message(self, message: str, messageType: int = Union[ct.MessageType, int]):
+        self.send_notification('window/logMessage', LogMessageParams(messageType, message))

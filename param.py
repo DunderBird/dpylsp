@@ -50,6 +50,11 @@ class ShowMessageParams(LspItem):
         self.type = messageType
         self.message = message
 
+class LogMessageParams(LspItem):
+    def __init__(self, messageType: int, message: str, **kwargs):
+        self.type = messageType
+        self.message = message
+
 
 # workspace
 class DidChangeConfigurationParams(LspItem):
