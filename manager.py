@@ -12,9 +12,6 @@ from . import constant as ct
 
 logger = logging.getLogger(__name__)
 
-jsonrpc_version = '2.0'
-cancel_method = '$/cancelRequest'
-
 
 class ClientRequestRecord:
     def __init__(self):
@@ -41,7 +38,7 @@ class ServerManager:
         self.client_request = {}
         self.client_request_lock = threading.RLock()
         self.__id_counter = 1
-        self.__id_counter_lock = threading.Lock()
+        self.__id_counter_lock = threading.RLock()
 
     def getRequestId(self):
         ''' get an unique id for server's request '''
@@ -109,21 +106,6 @@ class ServerManager:
             if result and not new_item.cancelled:
                 self.send_response(msg_id, result)
 
-    
-    def __client_request_callback(self, msg_id: int):
-        def callback(future: futures.Future):
-            nonlocal msg_id
-            if future.cancelled():
-                return
-            else:
-                try:
-                    logger.info(f'id: {msg_id}')
-                    result = future.result()
-                    self.send_response(msg_id, result)
-                except:
-                    logger.exception('Failed to get the result')
-        return callback
-
     def handle_response(self, id, result=None, error=None, **kwargs):
         '''
             called by dispatch
@@ -157,7 +139,7 @@ class ServerManager:
         param_item = param.getDict()
         msg_id = self.getRequestId()
         request = {
-            'jsonrpc': jsonrpc_version,
+            'jsonrpc': ct.JSONRPC_VERSION,
             'id': msg_id,
             'method': method,
             'params': param_item
@@ -166,15 +148,6 @@ class ServerManager:
             self.server_request[msg_id] = ServerRequestRecord(callback)
 
         self.jsonwriter.write(request)
-
-    def _cancel_callback(self, request_id):
-        ''' cancellation callback for a request '''
-        def callback(future):
-            if future.cancelled():
-                self.send_notification(cancel_method, CancelParams(request_id))
-                future.set_exception(JsonRpcRequestCancelled())
-
-        return callback
 
     def send_response(self, id, result: LspItem):
         logger.info(f'send response {id} {result.getDict()}')
@@ -185,10 +158,21 @@ class ServerManager:
                 self.jsonwriter.write(response)
                 self.client_request.pop(id, None)
 
+    def send_error_response(self, id, error_code: ct.ErrorCodes):
+        with self.client_request_lock:
+            if id in self.client_request:
+                response = {
+                    'jsonrpc': ct.JSONRPC_VERSION,
+                    'id': id,
+                    'error': int(error_code)
+                }
+                self.jsonwriter.write(response)
+                self.client_request.pop(id, None)
+
     def send_notification(self, method: str, param: LspItem):
         param_item = param.getDict()
         notification = {
-            'jsonrpc': jsonrpc_version,
+            'jsonrpc': ct.JSONRPC_VERSION,
             'method': method,
             'params': param_item
         }
@@ -207,7 +191,7 @@ class ServerManager:
     def show_message(self, message: str, messageType: int = ct.MessageType):
         '''
             This function is different from others
-            since we don't require a LspItem for simplicity.
+            because we don't require a LspItem for simplicity.
         '''
         self.send_notification('window/showMessage',
                                ShowMessageParams(messageType, message))

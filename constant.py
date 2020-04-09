@@ -1,6 +1,8 @@
 from typing import List
 from enum import IntEnum
 
+JSONRPC_VERSION = '2.0'
+
 class TextDocumentSyncKind(IntEnum):
     NONE = 0
     FULL = 1
@@ -24,3 +26,17 @@ class MessageType(IntEnum):
     WARNING = 2
     INFO = 3
     LOG = 4
+
+class ErrorCodes(IntEnum):
+    PARSEERROR = -32700
+    INVALIDREQUEST = -32600
+    METHODNOTFOUND = -32601
+    INVALIDPARAMS = -32602
+    INTERNALERROR = -32603
+    SERVERERRORSTART = -32099
+    SERVERERROREND = -32000
+    SERVERNOTINITIALIZED = -32002
+    UNKNOWNERRORCODE = -32001
+    
+    REQUESTCANCELLED = -32800
+    CONTENTMODIFIED = -32801
