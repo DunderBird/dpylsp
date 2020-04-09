@@ -1,7 +1,8 @@
 # https://github.com/palantir/python-language-server
 import logging
+import threading
 from concurrent import futures
-from streams import JsonRpcStreamReader, JsonRpcStreamWriter
+from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .methodMap import event_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
@@ -15,22 +16,56 @@ jsonrpc_version = '2.0'
 cancel_method = '$/cancelRequest'
 
 
+class ClientRequestRecord:
+    def __init__(self, future):
+        self.future = future
+        self.cancelled = False
+    
+    def cancel(self):
+        self.future.cancel()
+        self.cancelled = False
+
+    def add_done_callback(self, callback):
+        def wrapper_func(future):
+            nonlocal self, callback
+            if self.cancelled or future.cancelled():
+                return
+            else:
+                callback(future)
+        self.future.add_done_callback(wrapper_func)
+
+
+class ServerRequestRecord:
+    def __init__(self, callback):
+        self.callback = callback
+    
+    def run(self, result, error, *args, **kwargs):
+        self.callback(result=result, error=error, **kwargs)
+
 class ServerManager:
-    def __init__(self, masterServer, reader, writer, max_worker=5):
+    def __init__(self, masterServer, reader, writer, max_workers=5):
         self.master = masterServer
-        self.jsonreader = JsonRpcStreamReader(reader, max_worker)
+        self.jsonreader = JsonRpcStreamReader(reader)
         self.jsonwriter = JsonRpcStreamWriter(writer)
-        self.server_request_futures = {}
-        self.client_request_futures = {}
+        self.executor = futures.ThreadPoolExecutor(max_workers=max_workers)
+        self.server_request = {}
+        self.server_request_lock = threading.RLock()
+        self.client_request = {}
+        self.client_request_lock = threading.RLock()
         self.__id_counter = 1
+        self.__id_counter_lock = threading.Lock()
 
     def getRequestId(self):
         ''' get an unique id for server's request '''
-        result = self.__id_counter + 1
-        return result
+        with self.__id_counter_lock:
+            result = self.__id_counter
+            self.__id_counter += 1
+            return result
 
     def start(self):
-        self.jsonreader.listen(self.dispatch)
+        while True:
+            new_json = self.jsonreader.read_message()
+            self.executor.submit(self.dispatch, new_json)
 
     def exit(self):
         self.executor.shutdown()
@@ -38,6 +73,7 @@ class ServerManager:
         self.jsonwriter.close()
 
     def dispatch(self, message):
+        logger.info(f'message: {message}')
         if 'method' in message:
             handle_map = event_map.get(message['method'])
             if handle_map is None:
@@ -73,29 +109,35 @@ class ServerManager:
             param: parameter
             See https://github.com/palantir/python-language-server
         '''
-        result = getattr(self.master, name)(param)
-
-        if callable(result):
-            request_future = self.executor.submit(result)
-            self.client_request_futures[msg_id] = request_future
-            request_future.add_done_callback(self._request_callback(msg_id))
-        elif isinstance(result, futures.Future):
-            self.client_request_futures[msg_id] = request_future
-            request_future.add_done_callback(self._request_callback(msg_id))
+        try:
+            handler = getattr(self.master, name)
+        except:
+            logger.exception(f'No {name} method')
         else:
-            self.send_response(msg_id, result)
+            future = self.executor.submit(handler, param)
+            with self.client_request_lock:
+                new_item = ClientRequestRecord(future)
+                logger.info(f'new_item created {msg_id} {name}')
+                logger.info(f'thread: {threading.get_ident()}')
+                new_item.add_done_callback(self.__client_request_callback(msg_id))
+                logger.info('added done callback')
+                self.client_request[msg_id] = new_item
+                logger.info('added to client_request')
 
-    def _request_callback(self, msg_id):
-        '''
-            request callback
-            after get the result then send it to the client
-            the future's result should be a LspItem
-        '''
-        def callback(future):
-            self.client_request_futures.pop(msg_id, None)
+    
+    def __client_request_callback(self, msg_id: int):
+        def callback(future: futures.Future):
+            nonlocal msg_id
             if future.cancelled():
-                future.set_exception(JsonRpcRequestCancelled())
-            self.send_response(msg_id, future.result())
+                return
+            else:
+                try:
+                    logger.info(f'id: {msg_id}')
+                    result = future.result()
+                    self.send_response(msg_id, result)
+                except:
+                    logger.exception('Failed to get the result')
+        return callback
 
     def handle_response(self, id, result=None, error=None, **kwargs):
         '''
@@ -103,44 +145,42 @@ class ServerManager:
             result is None or a dict
             this will trigger the request_future's callback function
         '''
-        request_future = self.server_request_futures.pop(id, None)
-        if not request_future:
-            return
-        if error is not None:
-            request_future.set_exception(JsonRpcException.fromDict())
-            return
-        request_future.set_result(result)
+        with self.server_request_lock:
+            record = self.server_request.pop(id, None)
+            if record:
+                if error is not None:
+                    # TODO: furthur modification
+                    return
+                record.run(result=result, error=error, **kwargs)
+            self.server_request.pop(id)
 
     def handle_notification(self, name, param, **kwargs):
         getattr(self.master, name)(param)
 
     def handle_cancel_notification(self, msg_id):
-        request_future = self.client_request_futures.pop(msg_id, None)
-        if not request_future:
-            return
-        request_future.cancel()
+        with self.client_request_lock:
+            request_item = self.client_request.pop(msg_id, None)
+            if request_item:
+                request_item.cancel()
 
-    def send_request(self, msg_id: int, method: str, param: LspItem):
+    def send_request(self, method: str, param: LspItem, callback):
         '''
             Send request to client and save a future in server_request_futures
             if client responds, then the future's callback will be called.
             Note that this function won't run the future and add callback.
         '''
         param_item = param.getDict()
-        # msg_id = self.getRequestId()
+        msg_id = self.getRequestId()
         request = {
             'jsonrpc': jsonrpc_version,
             'id': msg_id,
             'method': method,
             'params': param_item
         }
-        request_future = futures.Future()
-        # request_future.add_done_callback(self._cancel_callback(msg_id))
+        with self.server_request_lock:
+            self.server_request[msg_id] = ServerRequestRecord(callback)
 
-        self.server_request_futures[msg_id] = request_future
         self.jsonwriter.write(request)
-
-        return request_future
 
     def _cancel_callback(self, request_id):
         ''' cancellation callback for a request '''
@@ -152,9 +192,15 @@ class ServerManager:
         return callback
 
     def send_response(self, id, result: LspItem):
-        result_item = result.getDict()
-        response = {'jsonrpc': '2.0', 'id': id, 'result': result_item}
-        self.jsonwriter.write(response)
+        logger.info(f'send response {id} {result.getDict()}')
+        with self.client_request_lock:
+            logger.info(f'in inner of send_response {threading.get_ident()}')
+            if id in self.client_request:
+                logger.info(f'id in self.client_request {threading.get_ident()}')
+                result_item = result.getDict()
+                response = {'jsonrpc': '2.0', 'id': id, 'result': result_item}
+                self.jsonwriter.write(response)
+                self.client_request.pop(id, None)
 
     def send_notification(self, method: str, param: LspItem):
         param_item = param.getDict()
@@ -175,8 +221,7 @@ class ServerManager:
             else:
                 self.master.onReceiveWorkspaceConfiguration(future.result())
 
-        msg_id = self.getRequestId()
-        ask_future = self.send_request(msg_id, 'workspace/configuration',
+        ask_future = self.send_request('workspace/configuration',
                                        param)
         ask_future.add_done_callback(callback)
 

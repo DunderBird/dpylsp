@@ -13,9 +13,8 @@ log = logging.getLogger(__name__)
 
 class JsonRpcStreamReader(object):
 
-    def __init__(self, rfile, max_workers):
+    def __init__(self, rfile):
         self._rfile = rfile
-        self.executor = futures.ThreadPoolExecutor(max_workers=max_workers)
 
     def close(self):
         self._rfile.close()
