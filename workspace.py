@@ -1,8 +1,8 @@
 # thanks https://github.com/palantir/python-language-server
-from typing import List, Dict
+from typing import List, Dict, Optional, Union
 import logging
 import io
-from .struct import TextDocumentContentChangeEvent
+from .struct import (TextDocumentContentChangeEvent, WorkspaceFolder, DocumentUri)
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,29 @@ class Document:
 
 class WorkSpace:
     def __init__(self):
-        self.rootUri = ''
+        self.workspaceFolders: List[WorkSpaceFolder] = []
+        self.name = ''
         self.documents: Dict[Document] = {}
+    
+    @property
+    def rootUri(self) -> Optional[DocumentUri]:
+        if len(self.workspaceFolders) > 0:
+            return self.workspaceFolders[0].uri
+        else:
+            return None
+    
+    @rootUri.setter
+    def rootUri(self, uri: DocumentUri):
+        self.workspaceFolders.insert(0, WorkspaceFolder(uri, ''))  # TODO: implement name property
+    
+    def addFolder(self, folder: WorkspaceFolder):
+        self.workspaceFolders.append(folder)  # TODO: check whether the folder already in the list
+    
+    def removeFolder(self, folder: WorkspaceFolder):
+        try:
+            self.workspaceFolders.remove(folder)
+        except ValueError:
+            logger.exception(f'No such folder. Folder name: {folder.name}')
 
     def addDocument(self, uri: str, text: str):
         if uri in self.documents:

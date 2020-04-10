@@ -33,6 +33,12 @@ class LspItem(object):
     def fromDict(cls, param: dict):
         return cls(**param)
 
+    def __repr__(self):
+        return str(self.getDict())
+    
+    def __str__(self):
+        return str(self.getDict())
+
     def getDict(self):
         dump_dict = {}
         for key, value in vars(self).items():

@@ -27,17 +27,25 @@ class CancelParams(LspItem):
 class InitializeParams(LspItem):
     def __init__(self, processId: Optional[int],
                  rootUri: Optional[DocumentUri],
-                 capabilities: ClientCapabilities, **kwargs):
+                 capabilities: ClientCapabilities, workspaceFolders: Optional[List[WorkspaceFolder]] = None, **kwargs):
         self.processId = processId
-        self.rootUri = rootUri
         self.capabilities: ClientCapabilities = capabilities
+        self.rootUri = rootUri
+        if workspaceFolders:
+            self.workspaceFolders: List[WorkspaceFolder] = workspaceFolders
 
     @classmethod
     def fromDict(cls, param: dict):
+        workspaceFolders = None
+        if 'workspaceFolders' in param:
+            workspaceFolders = []
+            for folder in param['workspaceFolders']:
+                workspaceFolders.append(WorkspaceFolder.fromDict(folder))
         return cls(processId=param['processId'],
                    rootUri=param['rootUri'],
                    capabilities=ClientCapabilities.fromDict(
-                       param['capabilities']))
+                       param['capabilities']),
+                   workspaceFolders=workspaceFolders)
 
 
 class InitializedParams(LspItem):

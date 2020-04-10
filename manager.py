@@ -1,6 +1,7 @@
 # https://github.com/palantir/python-language-server
 import logging
 import threading
+from typing import Optional, Union
 from concurrent import futures
 from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .methodMap import event_map
@@ -53,6 +54,7 @@ class ServerManager:
             new_json = self.jsonreader.read_message()
             new_worker = threading.Thread(target=self.dispatch, args=(new_json,))
             logger.info(f'threading count: {threading.active_count()}')
+            logger.info(f'{new_json}')  # TODO: fix race(use producer-consumer model)
             new_worker.start()
 
     def exit(self):
@@ -155,6 +157,7 @@ class ServerManager:
         self.jsonwriter.write(request)
 
     def send_response(self, id, result=None, error: Optional[ResponseError]=None):
+        logger.debug(f'{id} response: {result}')
         with self.client_request_lock:
             if id in self.client_request:
                 result_item = result.getDict() if isinstance(result, LspItem) else result

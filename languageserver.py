@@ -42,14 +42,19 @@ class BasicLanguageServer:
 
     def onInitialize(self, param: p.InitializeParams,
                      **kwargs) -> InitializeResult:
-        self.workspace.rootUri = param.rootUri if param.rootUri else ''
+        logger.debug(f'initialize: {param}')
+        if getattr(param, 'workspaceFolders', None):
+            for folder in param.workspaceFolders:
+                self.workspace.addFolder(folder)
+            logger.debug(f'workspaceFolders: {param.workspaceFolders}')
+        else:
+            self.workspace.rootUri = param.rootUri if param.rootUri else ''
         self.parent_processId = param.processId
         self.client_capability = param.capabilities
         return InitializeResult(self.server_capability)
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
         self.manager.ask_workspaceConfiguration(p.ConfigurationParams([p.ConfigurationItem(section='workbench')]))
-        return None
 
     def onShutdown(self, param: p.NullParams, **kwargs) -> SimpleResult:
         self.state = ServerState.SHUTDOWN
@@ -87,7 +92,10 @@ class BasicLanguageServer:
         logger.info(self.user_settings)
     
     def onDidChangeWorkspaceFolders(self, param: p.DidChangeWorkspaceFoldersParams, **kwargs) -> None:
-        pass
+        for added_folder in param.event.added:
+            self.workspace.addFolder(added_folder)
+        for removed_folder in param.event.removed:
+            self.workspace.removeFolder(removed_folder)
 
 
 class LanguageServer(BasicLanguageServer):
