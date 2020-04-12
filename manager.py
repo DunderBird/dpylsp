@@ -4,13 +4,14 @@ import threading
 from typing import Optional, Union
 from concurrent import futures
 from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
-from .methodMap import event_map
+from .methodMap import event_map, WorkerType
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
                     CancelParams, ShowMessageParams, LogMessageParams)
 from .struct import ResponseError
 from .exception import JsonRpcRequestCancelled, JsonRpcException
 from . import constant as ct
+from . import worker
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class ClientRequestRecord:
     def __init__(self):
         self.cancelled = False
-    
+
     def cancel(self):
         self.cancelled = True
 
@@ -26,9 +27,10 @@ class ClientRequestRecord:
 class ServerRequestRecord:
     def __init__(self, callback):
         self.callback = callback
-    
+
     def run(self, result, error, *args, **kwargs):
         self.callback(result=result, error=error, **kwargs)
+
 
 class ServerManager:
     def __init__(self, masterServer, reader, writer, max_workers=5):
@@ -39,34 +41,38 @@ class ServerManager:
         self.server_request_lock = threading.RLock()
         self.client_request = {}
         self.client_request_lock = threading.RLock()
-        self.__id_counter = 1
-        self.__id_counter_lock = threading.RLock()
+        self._id_counter = 1
+        self._id_counter_lock = threading.RLock()
+        self.editor = worker.Worker(name='editor')  # edit workspace
+        self.normal = worker.Worker(name='normal')
 
-    def getRequestId(self):
+    def _getRequestId(self):
         ''' get an unique id for server's request '''
-        with self.__id_counter_lock:
-            result = self.__id_counter
-            self.__id_counter += 1
+        with self._id_counter_lock:
+            result = self._id_counter
+            self._id_counter += 1
             return result
 
-    def start(self):
-        while True:
-            new_json = self.jsonreader.read_message()
-            new_worker = threading.Thread(target=self.dispatch, args=(new_json,))
-            logger.info(f'threading count: {threading.active_count()}')
-            logger.info(f'{new_json}')  # TODO: fix race(use producer-consumer model)
-            new_worker.start()
+    def _schedule(self, worker_type, func, *args, **kwargs):
+        if worker_type == WorkerType.EDITOR:
+            logger.info('editor worker')
+            self.editor.assign(func, *args, **kwargs)
+        elif worker_type == WorkerType.NORMAL:
+            logger.info('normal worker')
+            self.normal.assign(func, *args, **kwargs)
+        elif worker_type == WorkerType.URGENT:
+            logger.info('urgent event')
+            func(*args, **kwargs)
 
-    def exit(self):
-        self.jsonreader.close()
-        self.jsonwriter.close()
-
-    def dispatch(self, message):
+    def _dispatch(self, message):
         if 'method' in message:
             handle_map = event_map.get(message['method'])
             if handle_map is None:
                 if message['method'][:2] == r'$/' and 'id' in message:
-                    self.send_error_response(message['id'], ct.ErrorCodes.METHODNOTFOUND)
+                    self._schedule(WorkerType.NORMAL,
+                                   self._send_error_response, message['id'],
+                                   ct.ErrorCodes.METHODNOTFOUND)
+                    # self.send_error_response(message['id'], ct.ErrorCodes.METHODNOTFOUND)
                 logging.warning(
                     f"{message['method']} haven't been implemented")
             else:
@@ -84,14 +90,20 @@ class ServerManager:
 
                 if hasattr(self.master, handler_name):
                     if handle_map.rpctype == 'Notification':
-                        self.handle_notification(handler_name, handler_param)
+                        self._schedule(handle_map.worker,
+                                       self._handle_notification, handler_name,
+                                       handler_param)
+                        # self.handle_notification(handler_name, handler_param)
                     elif handle_map.rpctype == 'Request':
-                        self.handle_request(message['id'], handler_name,
-                                            handler_param)
+                        self._schedule(handle_map.worker, self._handle_request,
+                                       message['id'], handler_name,
+                                       handler_param)
+                        # self.handle_request(message['id'], handler_name,
+                        #                     handler_param)
         else:
-            self.handle_response(**message)
+            self._schedule(WorkerType.NORMAL, self._handle_response, **message)
 
-    def handle_request(self, msg_id, name, param, **kwargs):
+    def _handle_request(self, msg_id, name, param, **kwargs):
         '''
             handle request from client.
             msg_id: request's id
@@ -99,6 +111,7 @@ class ServerManager:
             param: parameter
             See https://github.com/palantir/python-language-server
         '''
+        logger.info(f'in handle request {msg_id}')
         try:
             handler = getattr(self.master, name)
         except:
@@ -109,11 +122,13 @@ class ServerManager:
                 self.client_request[msg_id] = new_item
             result = handler(param)
             if new_item.cancelled:
-                self.send_error_response(msg_id, ct.ErrorCodes.REQUESTCANCELLED)
+                self._send_error_response(msg_id,
+                                         ct.ErrorCodes.REQUESTCANCELLED)
             else:
-                self.send_response(msg_id, result)
+                logger.info(f'initialize result: {result}')
+                self._send_response(msg_id, result)
 
-    def handle_response(self, id, result=None, error=None, **kwargs):
+    def _handle_response(self, id, result=None, error=None, **kwargs):
         '''
             called by dispatch
             result is None or a dict
@@ -128,23 +143,39 @@ class ServerManager:
                 record.run(result=result, error=error, **kwargs)
             self.server_request.pop(id)
 
-    def handle_notification(self, name, param, **kwargs):
+    def _handle_notification(self, name, param, **kwargs):
         getattr(self.master, name)(param)
 
-    def handle_cancel_notification(self, msg_id):
+    def _handle_cancel_notification(self, msg_id):
         with self.client_request_lock:
             request_item = self.client_request.get(msg_id, None)
             if request_item:
                 request_item.cancel()
 
-    def send_request(self, method: str, param: LspItem, callback):
+    def start(self):
+        self.editor.start()
+        self.normal.start()
+        while True:
+            new_json = self.jsonreader.read_message()
+            self._dispatch(new_json)
+            logger.info(f'threading count: {threading.active_count()}')
+            logger.info(
+                f'{new_json}')  # TODO: fix race(use producer-consumer model)
+
+    def exit(self):
+        self.jsonreader.close()
+        self.jsonwriter.close()
+        self.editor.close()
+        self.normal.close()
+
+    def _send_request(self, method: str, param: LspItem, callback):
         '''
             Send request to client and save a future in server_request_futures
             if client responds, then the future's callback will be called.
             Note that this function won't run the future and add callback.
         '''
         param_item = param.getDict()
-        msg_id = self.getRequestId()
+        msg_id = self._getRequestId()
         request = {
             'jsonrpc': ct.JSONRPC_VERSION,
             'id': msg_id,
@@ -156,11 +187,15 @@ class ServerManager:
 
         self.jsonwriter.write(request)
 
-    def send_response(self, id, result=None, error: Optional[ResponseError]=None):
+    def _send_response(self,
+                       id,
+                       result=None,
+                       error: Optional[ResponseError] = None):
         logger.debug(f'{id} response: {result}')
         with self.client_request_lock:
             if id in self.client_request:
-                result_item = result.getDict() if isinstance(result, LspItem) else result
+                result_item = result.getDict() if isinstance(
+                    result, LspItem) else result
                 response = {'jsonrpc': '2.0', 'id': id}
                 if result_item:
                     response['result'] = result_item
@@ -169,7 +204,7 @@ class ServerManager:
                 self.jsonwriter.write(response)
                 self.client_request.pop(id, None)
 
-    def send_error_response(self, id, error_code: ct.ErrorCodes, message=''):
+    def _send_error_response(self, id, error_code: ct.ErrorCodes, message=''):
         with self.client_request_lock:
             if id in self.client_request:
                 error_response = ResponseError(error_code, message)
@@ -181,7 +216,7 @@ class ServerManager:
                 self.jsonwriter.write(response)
                 self.client_request.pop(id, None)
 
-    def send_notification(self, method: str, param: LspItem):
+    def _send_notification(self, method: str, param: LspItem):
         param_item = param.getDict()
         notification = {
             'jsonrpc': ct.JSONRPC_VERSION,
@@ -190,23 +225,26 @@ class ServerManager:
         }
         self.jsonwriter.write(notification)
 
-    def send_diagnostics(self, diagnostics: PublishDiagnosticParams):
+    def _send_diagnostics(self, diagnostics: PublishDiagnosticParams):
         self.send_notification('textDocument/publishDiagnostics', diagnostics)
 
     def ask_workspaceConfiguration(self, param: ConfigurationParams):
         def callback(result, error, *args, **kwargs):
             self.master.onReceiveWorkspaceConfiguration(result)
 
-        self.send_request('workspace/configuration',
-                                       param, callback)
+        self.send_request('workspace/configuration', param, callback)
 
-    def show_message(self, message: str, messageType: Union[ct.MessageType, int]):
+    def show_message(self, message: str, messageType: Union[ct.MessageType,
+                                                            int]):
         '''
             This function is different from others
             because we don't require a LspItem for simplicity.
         '''
         self.send_notification('window/showMessage',
                                ShowMessageParams(messageType, message))
-    
-    def log_message(self, message: str, messageType: int = Union[ct.MessageType, int]):
-        self.send_notification('window/logMessage', LogMessageParams(messageType, message))
+
+    def log_message(self,
+                    message: str,
+                    messageType: int = Union[ct.MessageType, int]):
+        self.send_notification('window/logMessage',
+                               LogMessageParams(messageType, message))
