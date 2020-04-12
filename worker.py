@@ -32,6 +32,5 @@ class Worker:
             task = self.q.get()
             if task is None:
                 break
-            logger(f'{self.name} handle an event')
             task[0](*task[1], **task[2])
             self.q.task_done()
