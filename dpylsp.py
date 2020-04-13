@@ -54,10 +54,13 @@ class DictLspItem(LspItem):
     '''
     def __init__(self, **kwargs):
         self._dict = kwargs
+
+    def update(self, new_dict: dict):
+        self._dict.update(new_dict)
     
     @classmethod
     def fromDict(cls, param: dict):
-        return cls(param)
+        return cls(**param)
 
     def getDict(self):
         return self._dict

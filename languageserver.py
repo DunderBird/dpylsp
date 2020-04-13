@@ -20,10 +20,10 @@ class BasicLanguageServer:
     def __init__(self,
                  reader,
                  writer,
-                 capability: Optional[ServerCapabilities] = None,
+                 capability: dict = {'textDocumentSync': ct.TextDocumentSyncKind.INCREMENTAL},
                  **kwargs):
         self.state: ServerState = ServerState.HANG
-        self.manager = ServerManager(self, reader, writer)
+        self.manager = ServerManager(self, reader, writer, server_capability=capability)
         self.workspace = WorkSpace()
         self.user_settings = {}
         self.parent_processId = -1
@@ -46,9 +46,10 @@ class BasicLanguageServer:
             logger.debug(f'workspaceFolders: {param.workspaceFolders}')
         else:
             self.workspace.rootUri = param.rootUri if param.rootUri else ''
+        logger.debug(f'capability: {param.capabilities.getDict()}')
         self.parent_processId = param.processId
-        self.client_capability = param.capabilities
-        return InitializeResult(self.server_capability)
+        self.manager.update_client_capability(param.capabilities.getDict())
+        return InitializeResult(self.manager.get_server_capability())
 
     def onInitialized(self, param: p.InitializedParams, **kwargs) -> None:
         self.manager.ask_workspaceConfiguration(p.ConfigurationParams([p.ConfigurationItem(section='workbench')]))
@@ -86,7 +87,7 @@ class BasicLanguageServer:
         for item in result:
             if item:
                 self.user_settings.update(item)
-        logger.info(self.user_settings)
+        logger.debug(self.user_settings)
     
     def onDidChangeWorkspaceFolders(self, param: p.DidChangeWorkspaceFoldersParams, **kwargs) -> None:
         for added_folder in param.event.added:
@@ -99,7 +100,7 @@ class LanguageServer(BasicLanguageServer):
     def __init__(self,
                  reader,
                  writer,
-                 capability: Optional[ServerCapabilities] = None,
+                 capability: dict = {'textDocumentSync': ct.TextDocumentSyncKind.INCREMENTAL},
                  **kwargs):
         super().__init__(reader, writer, capability, **kwargs)
 

@@ -4,7 +4,7 @@ from .dpylsp import LspItem, DictLspItem
 
 class ClientCapabilities(DictLspItem):
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
 
 '''
@@ -12,7 +12,7 @@ class ClientCapabilities(DictLspItem):
 '''
 class ServerCapabilities(DictLspItem):
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
 
 class WorkspaceFolderServerCapabilities(LspItem):

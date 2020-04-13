@@ -47,8 +47,9 @@ class ServerManager:
         self._id_counter = 1
         self._id_counter_lock = threading.Lock()
         
-        self._client_capability: ClientCapabilities = ClientCapabilities({})
-        self._server_capability: ServerCapabilities = ServerCapabilities(server_capability)
+        self._client_capability: ClientCapabilities = ClientCapabilities.fromDict({})
+        self._server_capability: ServerCapabilities = ServerCapabilities.fromDict(server_capability)
+        logger.info(self._server_capability)
 
         self.editor = worker.Worker(name='editor')  # edit workspace
         self.normal = worker.Worker(name='normal')
@@ -120,10 +121,11 @@ class ServerManager:
         except:
             logger.exception(f'No {name} method')
         else:
-            with self.client_request_lock:
+            with self._client_request_lock:
                 new_item = ClientRequestRecord()
-                self.client_request[msg_id] = new_item
+                self._client_request[msg_id] = new_item
             result = handler(param)
+            logger.info(result)
             if new_item.cancelled:
                 self.send_error_response(msg_id,
                                          ct.ErrorCodes.REQUESTCANCELLED)
