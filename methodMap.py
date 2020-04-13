@@ -48,7 +48,7 @@ class Rp_Map(MessageMap):
 
 event_map = {
     'initialize':
-    Rq_Map('onInitialize', p.InitializeParams),
+    Rq_Map('onInitialize', p.InitializeParams, worker=WorkerType.URGENT),
     'initialized':
     N_Map('onInitialized', p.InitializedParams),
     # shutdown shouldn't be dispatched to another thread because that thread may join itself

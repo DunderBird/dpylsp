@@ -3,9 +3,12 @@ from .dpylsp import LspItem
 
 
 class ClientCapabilities(LspItem):
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, textDocument: TextDocumentClientCapabilities, **kwargs):
+        self.textDocument = textDocument
 
+
+class TextDocumentClientCapabilities(LspItem):
+    pass
 
 '''
     Server capabilities
