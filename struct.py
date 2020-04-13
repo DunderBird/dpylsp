@@ -171,3 +171,4 @@ class WorkspaceFoldersChangeEvent(LspItem):
         added_list = [WorkspaceFolder.fromDict(add) for add in param['added']]
         removed_list = [WorkspaceFolder.fromDict(remove) for remove in param['removed']]
         return cls(added_list, removed_list)
+

@@ -1,22 +1,19 @@
 from typing import Optional, Union
-from .dpylsp import LspItem
+from .dpylsp import LspItem, DictLspItem
 
 
-class ClientCapabilities(LspItem):
-    def __init__(self, textDocument: TextDocumentClientCapabilities, **kwargs):
-        self.textDocument = textDocument
+class ClientCapabilities(DictLspItem):
+    def __init__(self, **kwargs):
+        super().__init__(kwargs)
 
-
-class TextDocumentClientCapabilities(LspItem):
-    pass
 
 '''
     Server capabilities
 '''
-class ServerCapabilities(LspItem):
-    def __init__(self,
-                 textDocumentSync: Optional[int], **kwargs):
-        self.textDocumentSync = textDocumentSync
+class ServerCapabilities(DictLspItem):
+    def __init__(self, **kwargs):
+        super().__init__(kwargs)
+
 
 class WorkspaceFolderServerCapabilities(LspItem):
     def __init__(self, supported: Optional[bool]=None, changeNotifications: Optional[Union[str, bool]]=None):

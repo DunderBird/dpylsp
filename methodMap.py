@@ -14,12 +14,14 @@ class WorkerType(IntEnum):
     URGENT = 3  # events we need to respond immediately(shutdown...)
 
 class MessageMap:
-    def __init__(self, rpctype, method=None, resultType=None, paramType=None, worker=WorkerType.NORMAL):
+    def __init__(self, rpctype, method=None, resultType=None, paramType=None, worker=WorkerType.NORMAL, client_capability=None, server_capability=None):
         self.rpctype = rpctype
         self.method = method
         self.resultType = resultType
         self.paramType = paramType
         self.worker = worker
+        self.client_capability = client_capability
+        self.server_capability = server_capability
 
 
 class N_Map(MessageMap):

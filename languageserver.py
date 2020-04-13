@@ -6,7 +6,6 @@ from .response import InitializeResult, SimpleResult
 from . import param as p
 from . import constant as ct
 from .workspace import WorkSpace
-from .capability import ServerCapabilities, ClientCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +27,7 @@ class BasicLanguageServer:
         self.workspace = WorkSpace()
         self.user_settings = {}
         self.parent_processId = -1
-        self.client_capability: ClientCapabilities
-        self.server_capability = capability if capability else ServerCapabilities(
-            ct.TextDocumentSyncKind.INCREMENTAL)
+
 
     def start(self):
         self.state = ServerState.RUN

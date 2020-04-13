@@ -1,6 +1,7 @@
 # https://github.com/palantir/python-language-server
 import logging
 import threading
+import copy
 from typing import Optional, Union
 from concurrent import futures
 from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
@@ -12,6 +13,7 @@ from .struct import ResponseError
 from .exception import JsonRpcRequestCancelled, JsonRpcException
 from . import constant as ct
 from . import worker
+from .capability import ClientCapabilities, ServerCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +35,21 @@ class ServerRequestRecord:
 
 
 class ServerManager:
-    def __init__(self, masterServer, reader, writer, max_workers=5):
+    def __init__(self, masterServer, reader, writer, max_workers=5, server_capability={}):
         self.master = masterServer
         self.jsonreader = JsonRpcStreamReader(reader)
         self.jsonwriter = JsonRpcStreamWriter(writer)
-        self.server_request = {}
-        self.server_request_lock = threading.Lock()
-        self.client_request = {}
-        self.client_request_lock = threading.Lock()
+
+        self._server_request = {}
+        self._server_request_lock = threading.Lock()
+        self._client_request = {}
+        self._client_request_lock = threading.Lock()
         self._id_counter = 1
         self._id_counter_lock = threading.Lock()
+        
+        self._client_capability: ClientCapabilities = ClientCapabilities({})
+        self._server_capability: ServerCapabilities = ServerCapabilities(server_capability)
+
         self.editor = worker.Worker(name='editor')  # edit workspace
         self.normal = worker.Worker(name='normal')
 
@@ -66,7 +73,7 @@ class ServerManager:
 
     def _dispatch(self, message):
         if 'method' in message:
-            handle_map = event_map.get(message['method'])
+            handle_map = event_map.get(message['method'], None)
             if handle_map is None:
                 if message['method'][:2] == r'$/' and 'id' in message:
                     self._schedule(WorkerType.NORMAL,
@@ -129,21 +136,21 @@ class ServerManager:
             result is None or a dict
             this will trigger the request_future's callback function
         '''
-        with self.server_request_lock:
-            record = self.server_request.pop(id, None)
+        with self._server_request_lock:
+            record = self._server_request.pop(id, None)
             if record:
                 if error is not None:
                     # TODO: furthur modification
                     return
                 record.run(result=result, error=error, **kwargs)
-            self.server_request.pop(id)
+            self._server_request.pop(id)
 
     def _handle_notification(self, name, param, **kwargs):
         getattr(self.master, name)(param)
 
     def _handle_cancel_notification(self, msg_id):
-        with self.client_request_lock:
-            request_item = self.client_request.get(msg_id, None)
+        with self._client_request_lock:
+            request_item = self._client_request.get(msg_id, None)
             if request_item:
                 request_item.cancel()
 
@@ -160,6 +167,28 @@ class ServerManager:
         self.jsonwriter.close()
         self.editor.close()
         self.normal.close()
+    
+    def update_client_capability(self, capability: dict):
+        self._client_capability.update(capability)
+
+    def get_client_capability(self) -> ClientCapabilities:
+        '''
+            this will return a deepcopy of client_capability
+        '''
+        return copy.deepcopy(self._client_capability)
+    
+    def get_server_capability(self) -> ServerCapabilities:
+        '''
+            this will return a deepcopy of server_capability
+        '''
+        return copy.deepcopy(self._server_capability)
+
+    def has_capability(self, method: str):
+        handle_map = event_map.get(method, None)
+        if not handle_map:
+            return False
+        else:
+            return (handle_map.server_capability in self._server_capability) and (handle_map.client_capability in self._client_capability)
 
     def send_request(self, method: str, param: LspItem, callback):
         '''
@@ -177,8 +206,8 @@ class ServerManager:
             'method': method,
             'params': param_item
         }
-        with self.server_request_lock:
-            self.server_request[msg_id] = ServerRequestRecord(callback)
+        with self._server_request_lock:
+            self._server_request[msg_id] = ServerRequestRecord(callback)
 
         self.jsonwriter.write(request)
 
@@ -186,8 +215,8 @@ class ServerManager:
                        id,
                        result=None,
                        error: Optional[ResponseError] = None):
-        with self.client_request_lock:
-            if id in self.client_request:
+        with self._client_request_lock:
+            if id in self._client_request:
                 result_item = result.getDict() if isinstance(
                     result, LspItem) else result
                 response = {'jsonrpc': '2.0', 'id': id}
@@ -196,11 +225,11 @@ class ServerManager:
                 if error:
                     response['error'] = error.getDict()
                 self.jsonwriter.write(response)
-                self.client_request.pop(id, None)
+                self._client_request.pop(id, None)
     
     def send_error_response(self, id, error_code: ct.ErrorCodes, message=''):
-        with self.client_request_lock:
-            if id in self.client_request:
+        with self._client_request_lock:
+            if id in self._client_request:
                 error_response = ResponseError(error_code, message)
                 response = {
                     'jsonrpc': ct.JSONRPC_VERSION,
@@ -208,7 +237,7 @@ class ServerManager:
                     'error': error_response.getDict()
                 }
                 self.jsonwriter.write(response)
-                self.client_request.pop(id, None)
+                self._client_request.pop(id, None)
 
     def send_notification(self, method: str, param: LspItem):
         param_item = param.getDict()

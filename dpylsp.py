@@ -50,29 +50,34 @@ class LspItem(object):
 
 class DictLspItem(LspItem):
     '''
-        create an LspItem according to an dict
-        If one item has many attributes you can
-        use this, However, it may not provide type hint
-        information.
-        model: a dict
-            key: attribute name (str)
-            value: class variables
+        A LspItem that actually is an dict
     '''
-    models = {}
     def __init__(self, **kwargs):
-        for k in self.models.keys():
-            setattr(self, k, kwargs.get(k, None))
+        self._dict = kwargs
     
     @classmethod
     def fromDict(cls, param: dict):
-        new_param = {}
-        for k, v in self.models.items():
-            if k in param:
-                if issubclass(v, LspItem):
-                    new_param[k] = v.fromDict(param[k])
-                elif isinstance(v, type):
-                    new_param[k] = v(param[k])
-                else:
-                    new_param[k] = param[k]
-            else:
-                new_param[k] = None
+        return cls(param)
+
+    def getDict(self):
+        return self._dict
+    
+    def hasAttr(self, item):
+        if item is None:
+            return True
+        else:
+            return self.__get__(item)
+
+    def __get__(self, var_name):
+        attr_list = var_name.split('.')
+        cur_var = None
+        try:
+            for attr in attr_list:
+                cur_var = curvar[attr]
+            return cur_var
+        except KeyError:
+            return None
+    
+    def __contain__(self, item):
+        return bool(hasAttr(self, item))
+    
