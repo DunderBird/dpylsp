@@ -19,6 +19,7 @@ def _convert_val(target):
         result = {}
         for key, value in target.items():
             result[key] = _convert_val(value)
+        return result
     elif isinstance(target, LspItem):
         return target.getDict()
     else:
