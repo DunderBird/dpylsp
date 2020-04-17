@@ -172,3 +172,24 @@ class WorkspaceFoldersChangeEvent(LspItem):
         removed_list = [WorkspaceFolder.fromDict(remove) for remove in param['removed']]
         return cls(added_list, removed_list)
 
+
+'''
+    Capability Related
+'''
+class RegisterOptions(LspItem):
+    pass
+
+
+class Registration(LspItem):
+    def __init__(self, id: str, method: str, registerOptions: Optional[RegisterOptions]=None):
+        self.id = id
+        self.method = method
+        if registerOptions:
+            self.registerOptions = registerOptions
+
+    @classmethod
+    def fromDict(cls, param):
+        options = None
+        if 'registerOptions' in param:
+            options = RegisterOptions.fromDict(param['registerOptions'])
+        return cls(param['id'], param['method'], options)

@@ -3,7 +3,7 @@ from .capability import ClientCapabilities
 from .dpylsp import LspItem
 from .struct import (TextDocumentItem, VersionedTextDocumentIdentifier,
                    TextDocumentContentChangeEvent, TextDocumentIdentifier, DocumentUri, Diagnostic,
-                   WorkspaceFolder, WorkspaceFoldersChangeEvent)
+                   WorkspaceFolder, WorkspaceFoldersChangeEvent, Registration)
 from .config import ConfigurationItem
 
 import logging
@@ -157,3 +157,16 @@ class PublishDiagnosticParams(LspItem):
         for diag_dict in param['diagnostics']:
             diags.append(Diagnostic.fromDict(diag_dict))
         return cls(uri=param['uri'], diagnostics=diags)
+
+
+# capability
+class RegistrationParams(LspItem):
+    def __init__(self, registrations: list[Registration], **kwargs):
+        self.registrations = registrations
+    
+    @classmethod
+    def fromDict(cls, param: dict):
+        registrations = []
+        for regis in param['registrations']:
+            registrations.append(Registration.fromDict(regis))
+        return cls(registrations)
