@@ -28,7 +28,8 @@ def _convert_val(target):
 
 class LspItem(object):
     def __init__(self, **kwargs):
-        pass
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @classmethod
     def fromDict(cls, param: dict):
