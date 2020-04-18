@@ -35,7 +35,7 @@ class ServerRequestRecord:
 
 
 class ServerManager:
-    def __init__(self, masterServer, reader, writer, max_workers=5, server_capability={}):
+    def __init__(self, masterServer, reader, writer, max_workers=5, server_capability):
         self.master = masterServer
         self.jsonreader = JsonRpcStreamReader(reader)
         self.jsonwriter = JsonRpcStreamWriter(writer)

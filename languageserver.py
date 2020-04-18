@@ -20,8 +20,9 @@ class BasicLanguageServer:
     def __init__(self,
                  reader,
                  writer,
-                 capability: dict = {'textDocumentSync': ct.TextDocumentSyncKind.INCREMENTAL},
+                 capability: Optional[dict] = None,
                  **kwargs):
+        capability = capability if capability else {'textDocumentSync': ct.TextDocumentSyncKind.INCREMENTAL}
         self.state: ServerState = ServerState.HANG
         self.manager = ServerManager(self, reader, writer, server_capability=capability)
         self.workspace = WorkSpace()
@@ -100,7 +101,7 @@ class LanguageServer(BasicLanguageServer):
     def __init__(self,
                  reader,
                  writer,
-                 capability: dict = {'textDocumentSync': ct.TextDocumentSyncKind.INCREMENTAL},
+                 capability: Optional[dict]=None,
                  **kwargs):
         super().__init__(reader, writer, capability, **kwargs)
 
