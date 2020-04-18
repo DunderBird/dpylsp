@@ -75,10 +75,10 @@ class DictLspItem(LspItem):
 
     def __get__(self, var_name):
         attr_list = var_name.split('.')
-        cur_var = None
+        cur_var = self._dict
         try:
             for attr in attr_list:
-                cur_var = curvar[attr]
+                cur_var = cur_var[attr]
             return cur_var
         except KeyError:
             return None
