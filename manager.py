@@ -5,7 +5,7 @@ import copy
 from typing import Optional, Union
 from concurrent import futures
 from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
-from .methodMap import event_map, WorkerType
+from .methodMap import event_map, WorkerType, capability_map
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
                     CancelParams, ShowMessageParams, LogMessageParams, RegistrationParams, UnregistrationParams)
@@ -186,11 +186,11 @@ class ServerManager:
         return copy.deepcopy(self._server_capability)
 
     def has_capability(self, method: str):
-        handle_map = event_map.get(method, None)
-        if not handle_map:
+        require = capability_map.get(method, None)
+        if not require:
             return False
         else:
-            return (handle_map.server_capability in self._server_capability) and (handle_map.client_capability in self._client_capability)
+            return (require.server in self._server_capability) and (require.client in self._client_capability)
 
     def send_request(self, method: str, param: LspItem, callback):
         '''
