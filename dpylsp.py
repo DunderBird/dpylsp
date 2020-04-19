@@ -67,7 +67,9 @@ class DictLspItem(LspItem):
     def getDict(self):
         return self._dict
     
-    def hasAttr(self, item: str) -> bool:
+    def hasAttr(self, item: Optional[str]) -> bool:
+        if item is None:
+            return True
         return bool(self.__get__(item))
 
     def __get__(self, var_name):

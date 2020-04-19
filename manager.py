@@ -8,7 +8,7 @@ from .streams import JsonRpcStreamReader, JsonRpcStreamWriter
 from .methodMap import event_map, WorkerType
 from .dpylsp import LspItem
 from .param import (NullParams, PublishDiagnosticParams, ConfigurationParams,
-                    CancelParams, ShowMessageParams, LogMessageParams)
+                    CancelParams, ShowMessageParams, LogMessageParams, RegistrationParams, UnregistrationParams)
 from .struct import ResponseError
 from .exception import JsonRpcRequestCancelled, JsonRpcException
 from . import constant as ct
@@ -274,3 +274,13 @@ class ServerManager:
                     messageType: int = Union[ct.MessageType, int]):
         self.send_notification('window/logMessage',
                                LogMessageParams(messageType, message))
+
+    def register_capability(self, registerParam: RegistrationParams):
+        def callback(result, error, *args, **kwargs):
+            pass  # TODO: deal error code
+        self.send_request('client/registerCapability', registerParam, callback)
+    
+    def unregister_capability(self, unregisterParam: UnregistrationParams):
+        def callback(result, error, *args, **kwargs):
+            pass  # TODO: deal error code
+        self.send_request('client/unregisterCapability', unregisterParam, callback)

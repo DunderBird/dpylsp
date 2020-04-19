@@ -173,6 +173,23 @@ class WorkspaceFoldersChangeEvent(LspItem):
         return cls(added_list, removed_list)
 
 
+class FileSystemWatcher(LspItem):
+    '''
+	 The  glob pattern to watch.
+	 
+	 Glob patterns can have the following syntax:
+	 - `*` to match one or more characters in a path segment
+	 - `?` to match on one character in a path segment
+	 - `**` to match any number of path segments, including none
+	 - `{}` to group conditions (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
+	 - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
+	 - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
+    '''
+    def __init__(self, globPattern: str, kind: Optional[int]=None, **kwargs):
+        self.globPattern = globPattern
+        self.kind = kind
+
+
 '''
     Capability Related
 '''
@@ -180,8 +197,20 @@ class RegisterOptions(LspItem):
     pass
 
 
+class DidChangeWatchedFilesRegistrationOptions(LspItem):
+    def __init__(self, watchers: list[FileSystemWatcher], **kwargs):
+        self.watchers = watchers
+
+    @classmethod
+    def fromDict(cls, param):
+        watchers = []
+        for wt in param['watchers']:
+            watchers.append(FileSystemWatcher.fromDict(wt))
+        return cls(watchers)
+
+
 class Registration(LspItem):
-    def __init__(self, id: str, method: str, registerOptions: Optional[RegisterOptions]=None):
+    def __init__(self, id: str, method: str, registerOptions: Optional[RegisterOptions]=None, **kwargs):
         self.id = id
         self.method = method
         if registerOptions:
@@ -193,3 +222,9 @@ class Registration(LspItem):
         if 'registerOptions' in param:
             options = RegisterOptions.fromDict(param['registerOptions'])
         return cls(param['id'], param['method'], options)
+
+
+class Unregistration(LspItem):
+    def __init__(self, id: str, method: str, **kwargs):
+        self.id = id
+        self.method = method

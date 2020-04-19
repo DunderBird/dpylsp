@@ -3,7 +3,7 @@ from .capability import ClientCapabilities
 from .dpylsp import LspItem
 from .struct import (TextDocumentItem, VersionedTextDocumentIdentifier,
                    TextDocumentContentChangeEvent, TextDocumentIdentifier, DocumentUri, Diagnostic,
-                   WorkspaceFolder, WorkspaceFoldersChangeEvent, Registration)
+                   WorkspaceFolder, WorkspaceFoldersChangeEvent, Registration, Unregistration)
 from .config import ConfigurationItem
 
 import logging
@@ -170,3 +170,15 @@ class RegistrationParams(LspItem):
         for regis in param['registrations']:
             registrations.append(Registration.fromDict(regis))
         return cls(registrations)
+
+
+class UnregistrationParams(LspItem):
+    def __init__(self, unregistrations: list[Unregistration], **kwargs):
+        self.unregistrations = unregistrations
+
+    @classmethod
+    def fromDict(cls, param: dict):
+        unregistration = []
+        for unregis in param['unregistrations']:
+            unregistration.append(Unregistration.fromDict(unregis))
+        return cls(unregistration)

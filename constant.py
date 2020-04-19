@@ -40,3 +40,14 @@ class ErrorCodes(IntEnum):
     
     REQUESTCANCELLED = -32800
     CONTENTMODIFIED = -32801
+
+class WatchKind(IntEnum):
+    CREATE = 1
+    CHANGE = 2
+    DELETE = 4
+
+
+class FileChangeType(IntEnum):
+    CREATED = 1
+    CHANGED = 2
+    DELETED = 3
