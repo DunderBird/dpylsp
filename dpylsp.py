@@ -67,11 +67,8 @@ class DictLspItem(LspItem):
     def getDict(self):
         return self._dict
     
-    def hasAttr(self, item):
-        if item is None:
-            return True
-        else:
-            return self.__get__(item)
+    def hasAttr(self, item: str) -> bool:
+        return bool(self.__get__(item))
 
     def __get__(self, var_name):
         attr_list = var_name.split('.')
@@ -83,6 +80,6 @@ class DictLspItem(LspItem):
         except KeyError:
             return None
     
-    def __contain__(self, item):
-        return bool(hasAttr(self, item))
+    def __contain__(self, item: str) -> bool:
+        return self.hasAttr(item)
     
