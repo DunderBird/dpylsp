@@ -1,6 +1,6 @@
 # Notice
 
-This repo hasn't been finished yet.
+This repo is no longer updated because I find a better frame: [pygls](https://github.com/openlawlibrary/pygls)
 
 ## Thanks
 I have referred the following projects:
